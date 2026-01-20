@@ -55,11 +55,10 @@ void showCustomSnackBar(
     builder: (context) => Positioned(
       bottom: 80,
       left: (screenWidth - toastWidth) / 2,
-      width: toastWidth,
       child: Material(
         color: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(10),
@@ -162,3 +161,4 @@ String capitalizeFirst(String value) {
   if (value.isEmpty) return value;
   return value[0].toUpperCase() + value.substring(1);
 }
+

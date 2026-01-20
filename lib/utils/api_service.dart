@@ -8,10 +8,46 @@ import 'package:fms_app/utils/app_theme.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:url_launcher/url_launcher.dart';
+
+import '../screens/dailogs/paystack_dailog.dart';
+import '../widgets/loading.dart';
 
 class ApiService {
   // Use 127.0.0.1 for better compatibility
   static const String baseUrl = 'http://127.0.0.1:8000/api';
+  // Change 'void' to 'String?'
+  Future<String?> processPayment({
+    required BuildContext context,
+    required double amount,
+    required String type,
+    required int quantity,
+  }) async {
+    try {
+      final response = await post('payments/initialize', {
+        'amount': amount,
+        'type': type,
+        'quantity': quantity,
+      }, context, true);
+
+      if (response != null && response.statusCode == 200) {
+        final decoded = jsonDecode(response.body);
+        final String checkoutUrl = decoded['data']['authorization_url'];
+        final String reference = decoded['data']['reference'];
+
+        final Uri url = Uri.parse(checkoutUrl);
+        if (await canLaunchUrl(url)) {
+          await launchUrl(url, mode: LaunchMode.externalApplication);
+          // ✅ Return the reference so the UI can use it for verification
+          return reference;
+        }
+      }
+    } catch (e) {
+      showCustomSnackBar(context, e.toString(), color: Colors.red);
+    }
+    return null; // Return null if initialization fails
+  }
 
   /// Multipart POST request for file uploads
   /// Works with both File (mobile) and Uint8List (web)
@@ -97,6 +133,67 @@ class ApiService {
       rethrow;
     }
   }
+
+// Inside class ApiService ...
+
+  void _showVerifyDialog(BuildContext context, String reference) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Confirm Payment"),
+        content: const Text(
+          "A payment window has opened in your browser. Please click 'Verify' after completing the payment.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              // Call the verification logic
+              await verifyOnServer(context, reference);
+            },
+            child: const Text("Verify Payment"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> verifyOnServer(BuildContext context, String reference,) async {
+    LoadingScreen.show(context);
+
+    try {
+      final response = await get('payments/verify?reference=$reference', context);
+
+      if (response?.statusCode == 200) {
+        final responseData = jsonDecode(response!.body);
+
+        // Update AppManager immediately with the data from the verify API
+        if (responseData['company'] != null) {
+          await AppManager().updateCompanyData(responseData['company']);
+        }
+
+        if (context.mounted) {
+          LoadingScreen.hide(context);
+          showCustomSnackBar(context, 'Payment Verified!',color: Colors.green);
+        }
+      } else {
+        final responseData = jsonDecode(response!.body);
+        if (context.mounted) LoadingScreen.hide(context);
+        showCustomSnackBar(context, 'Payment Not Verified!',color: Colors.redAccent);
+        // Handle error...
+      }
+    } catch (e) {
+      if (context.mounted) LoadingScreen.hide(context);
+      print("❌ Verify API Error: $e");
+    }
+  }
+
 
   /// Simple GET request
   Future<http.Response?> get(

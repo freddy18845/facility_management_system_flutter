@@ -67,6 +67,25 @@ class AppManager {
     }
   }
 
+
+  /// Use this after a successful payment verification
+  Future<void> updateCompanyData(Map<String, dynamic> newCompanyData) async {
+    try {
+      if (loginResponse.containsKey("user")) {
+        loginResponse["user"]["company"] = newCompanyData;
+
+        // Save to disk so it persists on restart
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('login_response', jsonEncode(loginResponse));
+
+        print("✅ AppManager updated with: ${newCompanyData['sms_count']} SMS");
+      } else {
+        print("❌ Update failed: 'user' key not found in loginResponse");
+      }
+    } catch (e) {
+      print('❌ Error updating company data: $e');
+    }
+  }
   // Load saved login data
   Future<void> loadLoginData() async {
     try {

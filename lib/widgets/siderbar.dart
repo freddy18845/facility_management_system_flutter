@@ -158,6 +158,7 @@ class _SidebarState extends State<Sidebar> {
           ),
           _menuItem(Icons.apartment_outlined, 'Tenants', AppNavigation.tenants),
           _menuItem(Icons.group_outlined, 'Users', AppNavigation.users),
+          _menuItem(Icons.group_outlined, 'Transactions', AppNavigation.transactions),
           _menuItem(
             Icons.settings_outlined,
             'Settings',
@@ -219,30 +220,13 @@ class _SidebarState extends State<Sidebar> {
       // We strip the prefix "data:image/jpeg;base64," to get the raw bytes
       final String base64String = _base64Logo!.split(',').last;
 
-      return Column(children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: Image.memory(
-            base64Decode(base64String),
-            width: 60,
-            height: 40,
-            fit: BoxFit.contain,
-          ),
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          base64Decode(base64String),
+          height: 80,
         ),
-        SizedBox(height: 2,),
-        Center(
-          child: Text(
-            companyName ?? 'Company',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],);
+      );
     }
     // If no logo URL, show company name
     return _buildCompanyNameFallback(companyName);

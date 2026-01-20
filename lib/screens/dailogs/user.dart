@@ -54,7 +54,7 @@ class _UserDialogState extends State<UserDialog>
 
   // Helper getter to check if editing
   bool get isEditMode => widget.selectedArtisan != null && widget.selectedArtisan!.isNotEmpty;
-
+  final Role = capitalizeFirst(AppManager().getRole()!);
   @override
   void initState() {
     super.initState();
@@ -275,7 +275,7 @@ class _UserDialogState extends State<UserDialog>
               buildField(
                       controller: _emailController,
                       label: 'Email',
-                      icon: Icons.email,
+                      icon: Icons.email_outlined,
                     ),
               const SizedBox(height: 12),
                  buildField(
@@ -306,6 +306,16 @@ class _UserDialogState extends State<UserDialog>
         displayText: (item) => item['role'],
         onSelected: (item) {
           setState(() {
+            if( item['role']=="Admin"){
+              if(Role=="Admin"){
+                selectedRole = item;
+                roleController.text = item['role'] ?? '';
+              }else{
+                showCustomSnackBar(context, "Sorry,Users with admin role can assign the admin role to someOne");
+              }
+             return;
+            }
+
             selectedRole = item;
             roleController.text = item['role'] ?? '';
           });

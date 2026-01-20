@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../components/dashboard/chart_section.dart';
 import '../../components/dashboard/main_status.dart';
 import '../../components/dashboard/shimmer.dart';
+import '../../providers/constants.dart';
 import '../../utils/api_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/recent_incidents.dart';
@@ -26,34 +27,7 @@ class DashboardContent extends StatefulWidget {
 class _DashboardContentState extends State<DashboardContent>
     with SingleTickerProviderStateMixin {
 
-  Map<String, dynamic> usersData = {
-    "tenants": 0,
-    "staff": 0,
-    "artisans": 0,
-    "total": 0,
-  };
 
-  Map<String, dynamic> maintenanceData = {
-    "total": 0,
-    "open": 0,
-    "completed": 0,
-    "overdue": 0,
-    "completion_rate": 0,
-  };
-
-  Map<String, dynamic> priorityBreakdown = {
-    "low": 0,
-    "medium": 0,
-    "high": 0,
-  };
-
-  Map<String, dynamic> statusBreakdown = {
-    "Pending": 0,
-    "Assigned": 0,
-    "In progress": 0,
-    "Completed": 0,
-    "Cancelled": 0,
-  };
 
   bool isLoading = true;
   late AnimationController _animationController;

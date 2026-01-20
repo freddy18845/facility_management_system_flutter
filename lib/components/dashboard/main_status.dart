@@ -1,6 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../Models/company_data.dart';
+import '../../providers/app_Manager.dart';
+
 class MainStatus extends StatelessWidget {
   final double horizontalPadding;
   final double verticalPadding;
@@ -24,6 +27,10 @@ class MainStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final companyJson = AppManager().loginResponse["user"]["company"];
+    final Company? companyData = companyJson != null
+        ? Company.fromJson(Map<String, dynamic>.from(companyJson))
+        : null;
     return Wrap(
       spacing: horizontalPadding * 0.3,
       runSpacing: verticalPadding,
@@ -60,7 +67,7 @@ class MainStatus extends StatelessWidget {
           ),
         _buildEnhancedStatCard(
           title: 'Total SMS',
-          value: '200',
+          value: companyData!.smsCount.toString(),
           icon: Icons.message_outlined,
           color: Colors.orange,
           isMobile: isMobile,

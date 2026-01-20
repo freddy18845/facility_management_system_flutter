@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../providers/app_Manager.dart';
+import '../screens/dailogs/company_dailog.dart';
+import 'btn.dart';
+
 Widget buildSection({
   required String title,
   required IconData icon,
   required Color color,
   required List<Widget> children,
-  required BuildContext context
+  required BuildContext context,
+  bool   showEdit  = false
 }) {
+
   return Container(
     decoration: BoxDecoration(
       color: Theme.of(context).cardColor,
@@ -18,35 +24,56 @@ Widget buildSection({
         ),
       ],
     ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
+    child:
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
+
+              Expanded(child:    Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(icon, color: color, size: 18),
                 ),
-                child: Icon(icon, color: color, size: 18),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        ...children,
-      ],
-    ),
+              ],
+            ),
+          )),if(showEdit)
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  child: CustomButton(
+                  text: 'Edit',
+                  color: Colors.blue,
+                  isShowIcon: true,
+                  onPressed: () async {
+                    final companyJson = await AppManager().loginResponse["user"]["company"];
+                    CompanySettingsDialog.show(context,companyJson);
+                  },
+                  icon: Icons.edit,
+                )),
+
+        ],),
+          ...children,
+        ],
+      )
+
+
   );
 }
 

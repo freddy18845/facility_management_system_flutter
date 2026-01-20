@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -7,6 +8,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../components/issue_tab.dart';
 import '../../components/tenant_and_artisan_navbar.dart';
 import '../../providers/app_Manager.dart';
+import '../../providers/constants.dart';
 import '../../utils/api_service.dart';
 import '../../widgets/btn.dart';
 import '../../widgets/empty_table.dart';
@@ -14,6 +16,7 @@ import '../../widgets/loading.dart';
 import '../../widgets/textform.dart';
 import '../../utils/app_theme.dart';
 import '../dailogs/issue_report_dailog.dart';
+import '../login_screen.dart';
 
 class TenantIssuesScreen extends StatefulWidget {
   const TenantIssuesScreen({super.key});
@@ -50,6 +53,9 @@ class _TenantIssuesScreenState extends State<TenantIssuesScreen>
   final tenantId = AppManager().getTenantId();
   final companyId = AppManager().getCompanyId();
   final role = AppManager().getRole();
+  Timer? _inactivityTimer;
+// Set timeout duration (e.g., 15 minutes)
+  static final _timeoutDuration = Duration(minutes: ideaTimeDuration);
 
   @override
   void initState() {
@@ -307,7 +313,57 @@ class _TenantIssuesScreenState extends State<TenantIssuesScreen>
     _images.clear();
     _selectedPriority = 'medium';
   }
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel(); // Cancel any existing timer
+    _inactivityTimer = Timer(_timeoutDuration, _handleAutoLogout);
+  }
 
+  Future<void> _handleAutoLogout() async {
+    if (!mounted) return;
+    LoadingScreen.show(context, message: 'Logging out...');
+
+    try {
+
+      final response = await ApiService().post(
+        'auth/logout',
+        {},
+        context,
+        true,
+      );
+
+      if (mounted) LoadingScreen.hide(context);
+
+      if (response?.statusCode == 200 || response?.statusCode == 201) {
+        final responseData = jsonDecode(response!.body);
+        debugPrint('📦 Logout response: $responseData');
+
+        // Clear AppManager data
+        await AppManager().clearLoginData();
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+          );
+        }
+      } else {
+        throw Exception('Logout failed');
+      }
+    } catch (e, stackTrace) {
+      if (mounted) LoadingScreen.hide(context);
+      debugPrint('❌ Logout error: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+
+      if (mounted) {
+        showCustomSnackBar(
+          context,
+          'Logout failed. Please try again.',
+          color: Colors.red,
+        );
+      }
+    }
+  }
   Map<String, int> _getIssueStats() {
     return {
       'total': myIssues.length,
@@ -354,7 +410,9 @@ class _TenantIssuesScreenState extends State<TenantIssuesScreen>
         .size;
     final isMobile = size.width < 600;
 
-    return Scaffold(
+    return Listener(
+        onPointerDown: (_) => _startInactivityTimer(), // Reset timer on every touch
+        child : Scaffold(
       backgroundColor: Colors.grey.shade200,
       floatingActionButton:FadeTransition(
         opacity: _fadeAnimation,
@@ -434,7 +492,7 @@ class _TenantIssuesScreenState extends State<TenantIssuesScreen>
           ),
         ],
       ),
-    );
+        ) );
   }
 
   void _showReportIssueDialog() {

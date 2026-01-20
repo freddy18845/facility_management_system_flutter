@@ -2,9 +2,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fms_app/providers/app_Manager.dart';
 import 'package:fms_app/screens/admins_screen/app_temple.dart';
+import 'package:fms_app/screens/dailogs/room.dart';
 import 'package:fms_app/screens/register_company.dart';
 import 'package:fms_app/screens/tenant_screen/tenant_dashboard.dart';
 import '../providers/auth_manager.dart';
+import '../screens/dailogs/confirnation_dailog.dart';
+import '../screens/dailogs/reset_or_forgot_password.dart';
 import '../utils/api_service.dart';
 import '../utils/app_theme.dart';
 import 'btn.dart';
@@ -55,8 +58,8 @@ class _LoginCardState extends State<LoginCard> {
   }
 
   Future<void> login() async {
-    if (_emailController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
-
+    if (_emailController.text.isNotEmpty &&
+        _passwordController.text.isNotEmpty) {
       LoadingScreen.show(context, message: 'Loading...');
 
       try {
@@ -78,9 +81,7 @@ class _LoginCardState extends State<LoginCard> {
           debugPrint('📦 Response data: $responseData');
 
           // Save login data
-          await AppManager().saveLoginData(
-            data: responseData['data'],
-          );
+          await AppManager().saveLoginData(data: responseData['data']);
 
           // Save credentials
           await AuthStorage.instance.saveCredentials(
@@ -225,16 +226,12 @@ class _LoginCardState extends State<LoginCard> {
                 ),
               ),
               InkWell(
-                onTap: () {
+                onTap: () async {
                   // TODO: Navigate to forgot password screen
-                  showCustomSnackBar(
-                    context,
-                    "Password reset feature coming soon",
-                    color: Colors.blue,
-                  );
+                  ResetOrForgottenPasswordDialog.show(context);
                 },
                 child: const Text(
-                  "Forgot Password?",
+                  "Reset or Forgot Password?",
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400),
                 ),
               ),

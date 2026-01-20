@@ -15,7 +15,11 @@ class Company {
   DateTime? updatedAt;
   String? logoUrl;
   String? subscriptionStatus;
-  int? daysRemaining;
+  num? daysRemaining;
+
+  // New Fields added here
+  String? senderId;
+  int? smsCount;
 
   Company({
     this.id,
@@ -35,6 +39,8 @@ class Company {
     this.logoUrl,
     this.subscriptionStatus,
     this.daysRemaining,
+    this.senderId,
+    this.smsCount,
   });
 
   // ---------------- FROM JSON ----------------
@@ -47,22 +53,27 @@ class Company {
       address: json['address'] as String?,
       city: json['city'] as String?,
       town: json['town'] as String?,
-      postalCode: json['postalCode'] as String?,
+      // Note: mapping snake_case from Laravel to camelCase for Flutter
+      postalCode: json['postal_code'] as String?,
       logo: json['logo'] as String?,
-      subscriptionEndDate: json['subscriptionEndDate'] != null
-          ? DateTime.parse(json['subscriptionEndDate'])
+      subscriptionEndDate: json['subscription_end_date'] != null
+          ? DateTime.parse(json['subscription_end_date'].toString())
           : null,
       latitude: json['latitude'],
       longitude: json['longitude'],
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'])
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'].toString())
           : null,
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'])
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'].toString())
           : null,
-      logoUrl: json['logoUrl'] as String?,
-      subscriptionStatus: json['subscriptionStatus'] as String?,
-      daysRemaining: json['daysRemaining'] as int?,
+      logoUrl: json['logo_url'] as String?,
+      subscriptionStatus: json['subscription_status'] as String?,
+      daysRemaining: json['days_remaining'] as num?,
+
+      // New mappings
+      senderId: json['sender_id'] as String?,
+      smsCount: json['sms_count'] as int?,
     );
   }
 
@@ -76,16 +87,20 @@ class Company {
       'address': address,
       'city': city,
       'town': town,
-      'postalCode': postalCode,
+      'postal_code': postalCode,
       'logo': logo,
-      'subscriptionEndDate': subscriptionEndDate?.toIso8601String(),
+      'subscription_end_date': subscriptionEndDate?.toIso8601String(),
       'latitude': latitude,
       'longitude': longitude,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
-      'logoUrl': logoUrl,
-      'subscriptionStatus': subscriptionStatus,
-      'daysRemaining': daysRemaining,
+      'created_at': createdAt?.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
+      'logo_url': logoUrl,
+      'subscription_status': subscriptionStatus,
+      'days_remaining': daysRemaining,
+
+      // New mappings
+      'sender_id': senderId,
+      'sms_count': smsCount,
     };
   }
 }

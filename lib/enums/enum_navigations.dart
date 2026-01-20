@@ -5,5 +5,6 @@ enum AppNavigation {
   artisans,
   tenants,
   users,
+  transactions,
   settings,
 }

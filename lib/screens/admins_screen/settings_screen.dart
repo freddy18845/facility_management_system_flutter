@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../Models/company_data.dart';
 import '../../main.dart';
+import '../../providers/app_Manager.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/btn.dart';
 import '../../widgets/settings_card.dart';
+import '../dailogs/company_dailog.dart';
+import '../dailogs/payment_upgrade_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,9 +18,14 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _darkMode = false;
   String _selectedLanguage = 'English';
+  final Role = capitalizeFirst(AppManager().getRole()!);
 
   @override
   Widget build(BuildContext context) {
+    final companyJson = AppManager().loginResponse["user"]["company"];
+    final Company? companyData = companyJson != null
+        ? Company.fromJson(Map<String, dynamic>.from(companyJson))
+        : null;
     final size = MediaQuery.of(context).size;
 
     return Column(
@@ -27,16 +37,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                buildSection(
+                InkWell(onTap: (){
+                  CompanySettingsDialog.show(context,companyJson);
+                },
+                child: buildSection(
                   context: context,
-                  title: 'Company Settings',
+                  title: 'Company info',
                   icon: Icons.store_mall_directory_outlined,
                   color: Colors.blue,
+                  showEdit:Role=="Admin"?true:false,
                   children: [
                     buildListTile(
                       icon: Icons.apartment_outlined,
                       title: 'Name',
-                      subtitle: 'ABD Apartment',
+                      subtitle: companyData!.name??"N/A",
                       trailing: const Icon(
                         Icons.verified,
                         color: Colors.green,
@@ -46,13 +60,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     buildListTile(
                       icon: Icons.location_on_outlined,
                       title: 'Location',
-                      subtitle: ' West Legon',
-                      onTap: () {},
+                      subtitle: companyData.address??'N/A',
+                      trailing: const Icon(
+                        Icons.verified,
+                        color: Colors.green,
+                        size: 20,
+                      ),
                     ),
                     buildListTile(
                       icon: Icons.email,
                       title: 'Email',
-                      subtitle: 'abcapartments@gmail.com',
+                      subtitle: companyData.email ??"N/A",
                       trailing: const Icon(
                         Icons.verified,
                         color: Colors.green,
@@ -62,21 +80,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     buildListTile(
                       icon: Icons.phone,
                       title: 'Phone Number',
-                      subtitle: '+233 274 123 456 , +233 274 123 456',
-                      onTap: () {
-                        // TODO: Change phone number
-                      },
+                      subtitle: companyData.phone??"N/A",
+                      trailing: const Icon(
+                        Icons.verified,
+                        color: Colors.green,
+                        size: 20,
+                      ),
                     ),
                     buildListTile(
                       icon: Icons.insert_drive_file_outlined,
                       title: 'Subscription Expire Date',
-                      subtitle: 'Oct 20, 2026',
+                      subtitle:formatDate(companyData.subscriptionEndDate!),
                       onTap: () {
-                        // TODO: Change phone number
+                        PaymentUpgradeDialog.show(context );
+                      },
+                    ),buildListTile(
+                      icon: Icons.chat_outlined,
+                      title: 'SMS',
+                      subtitle:companyData.smsCount.toString(),
+                      onTap: () {
+                        PaymentUpgradeDialog.show(context );
                       },
                     ),
                   ],
-                ),
+                ),),
 
                 const SizedBox(height: 16),
                 Row(
@@ -115,10 +142,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             icon: Icons.language,
                             title: 'Language',
                             subtitle: _selectedLanguage,
+
                             onTap: () {
                               _showLanguageDialog();
                             },
-                          ),
+                              ),
                         ],
                         context: context,
                       ),

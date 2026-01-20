@@ -40,6 +40,7 @@ class _RegisterScreenState extends State<RegisterScreen>
   final _companyCityController = TextEditingController();
   final _companyTownController = TextEditingController();
   final _companyPostalController = TextEditingController();
+  final _companySenderIDController = TextEditingController();
 
   // Admin Controllers
   final _firstNameController = TextEditingController();
@@ -72,6 +73,7 @@ class _RegisterScreenState extends State<RegisterScreen>
     _companyCityController.dispose();
     _companyTownController.dispose();
     _companyPostalController.dispose();
+    _companySenderIDController.dispose();
     _firstNameController.dispose();
     _otherNamesController.dispose();
     _phoneController.dispose();
@@ -122,6 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen>
         "company[city]": _companyCityController.text.trim(),
         "company[town]": _companyTownController.text.trim(),
         "company[postal_code]": _companyPostalController.text.trim(),
+        "company[sender_id]": _companySenderIDController.text.trim(),
         "admin[first_name]": _firstNameController.text.trim(),
         "admin[last_name]": _otherNamesController.text.trim(),
         "admin[email]": _emailController.text.trim(),
@@ -145,8 +148,8 @@ class _RegisterScreenState extends State<RegisterScreen>
 
       // 3. Log the Response status
       if (response != null) {
-        print('📥 [DEBUG] RESPONSE RECEIVED');
-        print('🔢 Status Code: ${response.statusCode}');
+       // print('📥 [DEBUG] RESPONSE RECEIVED');
+       // print('🔢 Status Code: ${response.statusCode}');
         print('📄 Body: ${response.body}');
 
         final responseData = jsonDecode(response.body);
@@ -166,7 +169,7 @@ class _RegisterScreenState extends State<RegisterScreen>
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         } else {
-          print('❌ [DEBUG] SERVER RETURNED SUCCESS: FALSE');
+        //  print('❌ [DEBUG] SERVER RETURNED SUCCESS: FALSE');
           if (mounted) LoadingScreen.hide(context);
 
           // Detailed error logging for validation errors
@@ -181,16 +184,16 @@ class _RegisterScreenState extends State<RegisterScreen>
           );
         }
       } else {
-        print('🚫 [DEBUG] RESPONSE WAS NULL (ApiService might have caught an error)');
+      //  print('🚫 [DEBUG] RESPONSE WAS NULL (ApiService might have caught an error)');
       }
     } catch (e) {
-      print('💥 [DEBUG] CRITICAL ERROR IN SUBMIT: $e');
+     // print('💥 [DEBUG] CRITICAL ERROR IN SUBMIT: $e');
       if (mounted) {
         LoadingScreen.hide(context);
         showCustomSnackBar(context, e.toString(), color: Colors.redAccent);
       }
     } finally {
-      print('🏁 [DEBUG] REGISTRATION PROCESS FINISHED');
+     // print('🏁 [DEBUG] REGISTRATION PROCESS FINISHED');
       print('-------------------------------------------');
       if (mounted) setState(() => isLoading = false);
     }
@@ -336,20 +339,37 @@ class _RegisterScreenState extends State<RegisterScreen>
                 child: Image.memory(_companyLogo!, height: 80),
               ),
             SizedBox(height: vPadding),
-            buildField(
-              controller: _companyNameController,
-              label: 'Company Name',
-              icon: Icons.business_outlined,
-            ),
-            SizedBox(height: vPadding),
+
             Row(
               children: [
+                Expanded(
+                  child:  buildField(
+                    controller: _companyNameController,
+                    label: 'Company Name',
+                    icon: Icons.business_outlined,
+                  ),
+                ),
+                SizedBox(width: hPadding * 0.22),
                 Expanded(
                   child: buildField(
                     controller: _companyEmailController,
                     label: 'Email Address',
                     icon: Icons.email_outlined,
                     keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: vPadding),
+            Row(
+              children: [
+                Expanded(
+                  child: buildField(
+                    controller: _companySenderIDController,
+                    label: 'SMS SenderID',
+                    icon: Icons.credit_card_outlined,
+                    keyboardType: TextInputType.text,
+                    newMaxLength: 11
                   ),
                 ),
                 SizedBox(width: hPadding * 0.22),

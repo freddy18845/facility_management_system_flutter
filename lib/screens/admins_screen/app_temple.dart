@@ -1,21 +1,30 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:fms_app/screens/admins_screen/apartments_and_rooms.dart';
-import 'package:fms_app/screens/admins_screen/settings_screen.dart';
-import 'package:fms_app/screens/admins_screen/tenant_screen.dart';
-import 'package:fms_app/screens/admins_screen/user_screen.dart';
-import 'package:fms_app/screens/dailogs/notication_dailog.dart';
 import 'package:responsive_builder/responsive_builder.dart';
-import '../../enums/enum_navigations.dart';
+
+// Import your custom widgets
 import '../../providers/app_Manager.dart';
-import '../../providers/constants.dart';
-import '../../utils/api_service.dart';
 import '../../utils/app_theme.dart';
+import '../../widgets/loading.dart';
+import '../../widgets/notification_bell.dart';
 import '../../widgets/siderbar.dart';
-import '../dailogs/profile.dart';
+import '../../widgets/admin_top_bar.dart';
+// Import your screens
+import '../login_screen.dart';
 import 'dashboard.dart';
 import 'artisan_screen.dart';
 import 'issue_screen.dart';
+import 'apartments_and_rooms.dart';
+import 'settings_screen.dart';
+import 'tenant_screen.dart';
+import 'transactions_screen.dart';
+import 'user_screen.dart';
+
+// Import providers/utils
+import '../../enums/enum_navigations.dart';
+import '../../providers/constants.dart';
+import '../../utils/api_service.dart';
 
 class AdminTemplate extends StatefulWidget {
   const AdminTemplate({super.key});
@@ -26,25 +35,86 @@ class AdminTemplate extends StatefulWidget {
 
 class _AdminTemplateState extends State<AdminTemplate> {
   AppNavigation currentPage = AppNavigation.dashboard;
-  bool _isLoadingNotifications = false;
-  bool _isHoveringProfile = false;
+  Timer? _notificationTimer;
+  Timer? _inactivityTimer;
+// Set timeout duration (e.g., 15 minutes)
+  static final _timeoutDuration = Duration(minutes: ideaTimeDuration);
 
   @override
   void initState() {
     super.initState();
     _loadUnreadCount();
+    // Polls the server for new notifications every 60 seconds
+    _notificationTimer = Timer.periodic(const Duration(seconds: 60), (t) => _loadUnreadCount());
+  }
+
+  Future<void> _handleAutoLogout() async {
+    if (!mounted) return;
+    LoadingScreen.show(context, message: 'Logging out...');
+
+    try {
+
+      final response = await ApiService().post(
+        'auth/logout',
+        {},
+        context,
+        true,
+      );
+
+      if (mounted) LoadingScreen.hide(context);
+
+      if (response?.statusCode == 200 || response?.statusCode == 201) {
+        final responseData = jsonDecode(response!.body);
+        debugPrint('📦 Logout response: $responseData');
+
+        // Clear AppManager data
+        await AppManager().clearLoginData();
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+          );
+        }
+      } else {
+        throw Exception('Logout failed');
+      }
+    } catch (e, stackTrace) {
+      if (mounted) LoadingScreen.hide(context);
+      debugPrint('❌ Logout error: $e');
+      debugPrint('❌ Stack trace: $stackTrace');
+
+      if (mounted) {
+        showCustomSnackBar(
+          context,
+          'Logout failed. Please try again.',
+          color: Colors.red,
+        );
+      }
+    }
+  }
+
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel(); // Cancel any existing timer
+    _inactivityTimer = Timer(_timeoutDuration, _handleAutoLogout);
+  }
+
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel(); // Prevents memory leaks
+    super.dispose();
   }
 
   Future<void> _loadUnreadCount() async {
+    if (!mounted) return;
     try {
       final response = await ApiService().get('notifications/unread-count', context);
-
       if (response?.statusCode == 200) {
         final data = jsonDecode(response!.body);
         if (mounted) {
-          setState(() {
-            unreadCount = data['count'] ?? 0;
-          });
+          setState(() => unreadCount = data['count'] ?? 0);
         }
       }
     } catch (e) {
@@ -55,206 +125,60 @@ class _AdminTemplateState extends State<AdminTemplate> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final hPad = size.width * 0.015;
+    final vPad = size.height * 0.02;
 
-    final horizontalPadding = size.width * 0.015;
-    final verticalPadding = size.height * 0.02;
-
-    return ScreenTypeLayout(
-      mobile: _mobileLayout(horizontalPadding, verticalPadding),
-      tablet: _desktopLayout(horizontalPadding, verticalPadding),
-      desktop: _desktopLayout(horizontalPadding, verticalPadding),
-    );
-  }
-
-  /* ---------------- MOBILE ---------------- */
-
-  Widget _mobileLayout(double hPad, double vPad) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_titleForPage())),
-      drawer: Drawer(
-        child: Sidebar(
-          verticalPadding: vPad,
-          selected: currentPage,
-          onNavigate: (nav) {
-            setState(() => currentPage = nav);
-            Navigator.pop(context);
-          },
+    return Listener(
+        onPointerDown: (_) => _startInactivityTimer(), // Reset timer on every touch
+        child :ScreenTypeLayout(
+      mobile: Scaffold(
+        appBar: AppBar(
+          title: Text(_titleForPage()),
+          actions: [
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: NotificationBell(onRefresh: _loadUnreadCount),
+            )
+          ],
         ),
-      ),
-      body: _pageSwitcher(hPad, vPad, isMobile: true),
-    );
-  }
-
-  /* ---------------- DESKTOP / TABLET ---------------- */
-
-  Widget _desktopLayout(double hPad, double vPad) {
-    final hour = DateTime.now().hour;
-    String greeting = hour < 12
-        ? 'Good Morning'
-        : hour < 17
-        ? 'Good Afternoon'
-        : 'Good Evening';
-
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Row(
-        children: [
-          Sidebar(
+        drawer: Drawer(
+          child: Sidebar(
             verticalPadding: vPad,
             selected: currentPage,
             onNavigate: (nav) {
               setState(() => currentPage = nav);
+              Navigator.pop(context);
             },
           ),
-          Expanded(
-            child: Column(
-              children: [
-                // Top Bar
-                Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: hPad,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).dialogBackgroundColor,
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Theme.of(context).dialogBackgroundColor == Colors.grey[850]
-                            ? Colors.transparent
-                            : Colors.grey.shade200,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "$greeting,",
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Here\'s your property overview',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.black.withOpacity(0.9),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          // Notification Bell Icon
-                          _buildNotificationBell(),
-
-                          Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 8),
-                            height: 40,
-                            width: 1,
-                            color: Colors.grey.shade300,
-                          ),
-
-                          // User Info with Hover
-                          MouseRegion(
-                            onEnter: (_) => setState(() => _isHoveringProfile = true),
-                            onExit: (_) => setState(() => _isHoveringProfile = false),
-                            cursor: SystemMouseCursors.click,
-                            child: GestureDetector(
-                              onTap: (){
-                                ProfileDialog.show(context);
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color:
-                                       Theme.of(context).primaryColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(20),
-                                        border:
-                                        // _isHoveringProfile
-                                        //     ?
-                                        Border.all(
-                                          color: Theme.of(context).primaryColor,
-                                          width: 1,
-                                        ),
-                                        //    : null,
-                                      ),
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Image.asset(
-                                          "assets/images/profile.png",
-                                          height: vPad * 2.5,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          capitalizeFirst(AppManager().loginResponse["user"]["first_name"]),
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w700,
-                                            color: _isHoveringProfile
-                                                ? Theme.of(context).primaryColor
-                                                : Colors.black,
-                                          ),
-                                        ),
-                                        Text(
-                                          AppManager().loginResponse["user"]["email"],
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (_isHoveringProfile)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 4),
-                                        child: Icon(
-                                          Icons.arrow_drop_down,
-                                          color: Theme.of(context).primaryColor,
-                                          size: 20,
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Main Page Content
-                Expanded(child: _pageSwitcher(hPad, vPad, isMobile: false)),
-              ],
-            ),
-          ),
-        ],
+        ),
+        body: _pageSwitcher(hPad, vPad, isMobile: true),
       ),
-    );
+      desktop: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Row(
+          children: [
+            Sidebar(
+              verticalPadding: vPad,
+              selected: currentPage,
+              onNavigate: (nav) => setState(() => currentPage = nav),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  AdminTopBar(
+                    horizontalPadding: hPad,
+                    onNotificationRefresh: _loadUnreadCount,
+                  ),
+                  Expanded(
+                    child: _pageSwitcher(hPad, vPad, isMobile: false),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ));
   }
 
   /* ---------------- PAGE SWITCHER ---------------- */
@@ -279,111 +203,46 @@ class _AdminTemplateState extends State<AdminTemplate> {
           verticalPadding: vPad,
           isMobile: isMobile,
         );
-
       case AppNavigation.compliant:
         return const IncidentsScreen();
-
       case AppNavigation.tenants:
         return TenantPage(
           horizontalPadding: hPad,
           verticalPadding: vPad,
           isMobile: isMobile,
         );
-
       case AppNavigation.users:
         return UsersPage(
           horizontalPadding: hPad,
           verticalPadding: vPad,
           isMobile: isMobile,
         );
-
+      case AppNavigation.transactions:
+        return TransactionsPage(
+          horizontalPadding: hPad,
+          verticalPadding: vPad,
+          isMobile: isMobile,
+        );
       case AppNavigation.settings:
         return const SettingsScreen();
+      default:
+        return const Center(child: Text("Page Not Found"));
     }
   }
+
+  /* ---------------- TITLE GENERATOR ---------------- */
 
   String _titleForPage() {
     switch (currentPage) {
-      case AppNavigation.dashboard:
-        return 'Dashboard';
-      case AppNavigation.apartment:
-        return 'Apartment';
-      case AppNavigation.artisans:
-        return 'Artisans';
-      case AppNavigation.compliant:
-        return 'Compliant';
-      case AppNavigation.tenants:
-        return 'Tenants';
-      case AppNavigation.users:
-        return 'Users';
-      case AppNavigation.settings:
-        return 'Settings';
+      case AppNavigation.dashboard: return 'Dashboard';
+      case AppNavigation.apartment: return 'Apartments';
+      case AppNavigation.artisans: return 'Artisans';
+      case AppNavigation.compliant: return 'Complaints';
+      case AppNavigation.tenants: return 'Tenants';
+      case AppNavigation.users: return 'Users';
+      case AppNavigation.transactions: return 'Transactions';
+      case AppNavigation.settings: return 'Settings';
+      default: return 'FMS Admin';
     }
-  }
-
-  Widget _buildNotificationBell() {
-    return InkWell(
-      onTap:() async {
-        bool? isComplete = await NotificationDialog.show(context, _isLoadingNotifications);
-        if(isComplete!){
-          _loadUnreadCount();
-        }
-
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: unreadCount > 0
-              ? Colors.orange.withOpacity(0.1)
-              : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: unreadCount > 0
-                ? Colors.orange.withOpacity(0.3)
-                : Colors.grey.shade300,
-          ),
-        ),
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Icon(
-              unreadCount > 0
-                  ? Icons.notifications_active_rounded
-                  : Icons.notifications_outlined,
-              color: unreadCount > 0 ? Colors.orange : Colors.grey.shade600,
-              size: 22,
-            ),
-            if (unreadCount > 0)
-              Positioned(
-                right: -4,
-                top: -4,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 18,
-                    minHeight: 18,
-                  ),
-                  child: Center(
-                    child: Text(
-                      unreadCount > 99 ? '99+' : unreadCount.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 }
